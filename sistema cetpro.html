@@ -3,12 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" href="CETPRO.png">
   <title>Test Vocacional Profesional | CETPRO Dionisia Herrera Alvarado</title>
-  <!-- Chart.js para gráficos -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> 
   <style>
-    /* Fondo general con imagen de profesiones */
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       max-width: 900px;
@@ -21,7 +18,6 @@
       backdrop-filter: blur(5px);
     }
 
-    /* Contenedor principal con transparencia suave */
     .main-container {
       background-color: rgba(0, 0, 0, 0.7);
       border-radius: 12px;
@@ -120,32 +116,44 @@
 
     .options-container {
       display: flex;
-      gap: 15px;
+      gap: 10px;
+      flex-wrap: wrap;
       margin-top: 8px;
     }
 
     .option-wrapper {
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 5px;
+      gap: 4px;
+      border: 2px solid white;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 0.9rem;
+      transition: border-color 0.3s ease;
+    }
+
+    .option-wrapper.checked {
+      border-color: yellow;
     }
 
     .logo-cetpro {
       max-width: 120px;
       margin-bottom: 15px;
     }
+
+    canvas {
+      background-color: #ffffff;
+    }
   </style>
 </head>
 <body>
-
 <div class="main-container">
-
   <h1>Test Vocacional Profesional</h1>
   <h2>CETPRO Dionisia Herrera Alvarado</h2>
 
   <!-- Registro -->
   <section class="section" aria-labelledby="registroTitle">
-    <center><img src="CETPRO.png"  alt="Logo CETPRO" class="logo-cetpro" /></center>
+    <center><img src="cetpro.png" alt="Logo CETPRO" class="logo-cetpro" /></center>
     <h3 id="registroTitle">Registro de Usuario</h3>
     <form id="registroForm" novalidate>
       <label for="nombre">Nombres y Apellidos</label>
@@ -169,10 +177,14 @@
   <!-- Resultados -->
   <section class="section" aria-labelledby="resultadosTitle" id="resultSection">
     <h3 id="resultadosTitle">Resultados</h3>
-    <canvas id="resultChart" width="700" height="350" aria-label="Gráfico de resultados del test vocacional" role="img"></canvas>
+    <canvas id="resultChart" width="700" height="500" style="background-color:#fff;" role="img"></canvas>
     <p class="summary" id="careerProbabilities"></p>
+    <div id="userData" style="color: #fff; font-weight: bold;"></div>
+    <div style="margin-top: 20px;">
+      <button onclick="location.reload()" style="margin-right: 10px;">🔄 Realizar Nuevo Test</button>
+      <button onclick="window.print()">🖨️ Imprimir Resultados</button>
+    </div>
   </section>
-
 </div>
 
 <script>
@@ -222,29 +234,33 @@
     let userName = '';
     let userDNI = '';
 
-    const puntajesRespuesta = {
-      'si': 2,
-      'aveces': 1,
-      'no': 0
-    };
+    const puntajesRespuesta = { 'si': 2, 'aveces': 1, 'no': 0 };
 
     function generarPreguntas() {
       const allQuestions = [];
 
-      // Seleccionar 2 preguntas aleatorias por carrera
+      // Preguntas generales
+      const generalQuestions = [
+        "¿Qué tipo de trabajo prefieres? (ej.: técnico, social, creativo)",
+        "¿Tienes habilidades manuales o te sientes más cómodo con ideas abstractas?",
+        "¿Prefieres trabajar solo o en equipo?"
+      ];
+      generalQuestions.forEach(q => allQuestions.push({ career: "General", question: q }));
+
+      // Seleccionar 4 preguntas por carrera para llegar a 30 preguntas
       for (const [career, questions] of Object.entries(careers)) {
         const shuffled = [...questions].sort(() => 0.5 - Math.random());
-        const selected = shuffled.slice(0, 2); // 2 preguntas por carrera
+        const selected = shuffled.slice(0, 4); // 4 preguntas por carrera
         selected.forEach(q => allQuestions.push({ career, question: q }));
       }
 
-      // Mezclar todas las preguntas para mostrarlas aleatoriamente
+      // Mezclar todas las preguntas
       for (let i = allQuestions.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [allQuestions[i], allQuestions[j]] = [allQuestions[j], allQuestions[i]];
       }
 
-      selectedQuestions = allQuestions;
+      selectedQuestions = allQuestions.slice(0, 30); // Limitamos a 30 preguntas
     }
 
     function renderizarPreguntas() {
@@ -280,9 +296,20 @@
 
           const wrapper = document.createElement('div');
           wrapper.className = 'option-wrapper';
+
           wrapper.appendChild(input);
           wrapper.appendChild(labelOption);
           optionsDiv.appendChild(wrapper);
+
+          input.addEventListener('change', () => {
+            // Quitar estado de todos los envoltorios
+            const wrappers = optionsDiv.querySelectorAll('.option-wrapper');
+            wrappers.forEach(w => w.classList.remove('checked'));
+            if (input.checked) {
+              wrapper.classList.add('checked');
+            }
+            validateAll();
+          });
         });
 
         fieldset.appendChild(optionsDiv);
@@ -290,15 +317,11 @@
       });
     }
 
-    function validarRegistro(nombre, dni) {
-      const dniRegex = /^\d{8}$/;
-      if (!nombre.trim() || nombre.trim().length < 3) {
-        return "El nombre y apellidos deben tener al menos 3 caracteres.";
-      }
-      if (!dniRegex.test(dni)) {
-        return "El DNI debe contener exactamente 8 dígitos.";
-      }
-      return null;
+    function validateAll() {
+      const allAnswered = selectedQuestions.every((_, index) => {
+        return document.querySelector(`input[name='q${index}']:checked`);
+      });
+      document.getElementById('submitTestBtn').disabled = !allAnswered;
     }
 
     function calcularResultados(respuestas) {
@@ -306,31 +329,31 @@
       for (const career of Object.keys(careers)) {
         scores[career] = 0;
       }
-
       selectedQuestions.forEach(({career}, index) => {
         const answer = respuestas[index];
         if (answer) {
           scores[career] += puntajesRespuesta[answer];
         }
       });
-
       return scores;
     }
 
     function mostrarResultados(scores) {
       const resultSection = document.getElementById('resultSection');
       resultSection.style.display = 'block';
+
+      const userDataDiv = document.getElementById('userData');
+      userDataDiv.innerHTML = `
+        <strong>Nombre:</strong> ${userName} <br />
+        <strong>DNI:</strong> ${userDNI}
+      `;
+
       const ctx = document.getElementById('resultChart').getContext('2d');
 
-      const sortedCareers = Object.entries(scores).sort((a, b) => b[1] - a[1]);
-      const topCareers = sortedCareers.slice(0, 5);
+      const labels = Object.keys(scores);
+      const dataPoints = Object.values(scores);
 
-      const labels = topCareers.map(c => c[0]);
-      const dataPoints = topCareers.map(c => c[1]);
-
-      if (window.resultChartInstance) {
-        window.resultChartInstance.destroy();
-      }
+      if (window.resultChartInstance) window.resultChartInstance.destroy();
 
       window.resultChartInstance = new Chart(ctx, {
         type: 'bar',
@@ -339,37 +362,41 @@
           datasets: [{
             label: 'Puntaje',
             data: dataPoints,
-            backgroundColor: 'rgba(37, 99, 235, 0.7)',
-            borderColor: 'rgba(37, 99, 235, 1)',
+            backgroundColor: 'rgba(100, 200, 255, 0.8)',
+            borderColor: 'rgba(0, 120, 255, 1)',
             borderWidth: 1,
-            borderRadius: 6,
+            borderRadius: 4
           }]
         },
         options: {
-          responsive: true,
+          indexAxis: 'y',
           scales: {
-            y: {
+            x: {
               beginAtZero: true,
               stepSize: 1,
               title: { display: true, text: 'Puntaje' }
+            },
+            y: {
+              ticks: { autoSkip: false }
             }
           },
           plugins: {
-            legend: { display: false },
-            tooltip: { enabled: true }
-          }
+            tooltip: { enabled: true },
+            legend: { display: false }
+          },
+          responsive: true
         }
       });
 
-      const totalPoints = Object.values(scores).reduce((a,b) => a + b, 0) || 1;
-      const [first, second] = topCareers;
+      const totalPoints = Object.values(scores).reduce((a, b) => a + b, 0) || 1;
+      const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+      const [first, second] = sorted;
       const porcentaje1 = ((first[1] / totalPoints) * 100).toFixed(1);
       const porcentaje2 = second ? ((second[1] / totalPoints) * 100).toFixed(1) : 0;
       const careerProbEl = document.getElementById('careerProbabilities');
       careerProbEl.textContent = `Primera opción: ${first[0]} (${porcentaje1}%) | Segunda opción: ${second ? second[0] + ' (' + porcentaje2 + '%)' : 'N/A'}`;
     }
 
-    // Eventos
     document.getElementById('registroForm').addEventListener('submit', e => {
       e.preventDefault();
       const nombreInput = e.target.nombre.value.trim();
@@ -389,14 +416,6 @@
       document.getElementById('testSection').style.display = 'block';
       generarPreguntas();
       renderizarPreguntas();
-
-      const testForm = document.getElementById('testForm');
-      testForm.addEventListener('change', () => {
-        const allAnswered = selectedQuestions.every((_, index) => {
-          return [...testForm.elements].some(el => el.name === `q${index}` && el.checked);
-        });
-        document.getElementById('submitTestBtn').disabled = !allAnswered;
-      });
     });
 
     document.getElementById('testForm').addEventListener('submit', e => {
@@ -408,6 +427,16 @@
       document.getElementById('testSection').style.display = 'none';
     });
 
+    function validarRegistro(nombre, dni) {
+      const dniRegex = /^\d{8}$/;
+      if (!nombre.trim() || nombre.trim().length < 3) {
+        return "El nombre y apellidos deben tener al menos 3 caracteres.";
+      }
+      if (!dniRegex.test(dni)) {
+        return "El DNI debe contener exactamente 8 dígitos.";
+      }
+      return null;
+    }
   })();
 </script>
 </body>
