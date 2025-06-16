@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Test Vocacional Profesional | CETPRO Dionisia Herrera Alvarado</title>
+  <!-- Chart.js para gráficos -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> 
+  <style>
+    /* Fondo general con imagen de profesiones */
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 900px;
+      margin: 30px auto;
+      padding: 0 25px 50px;
+      background-image: url('carreras.jpg');
+      background-size: cover;
+      background-position: center;
+      color: #fff; 
+      backdrop-filter: blur(5px);
+    }
+
+    /* Contenedor principal con transparencia suave */
+    .main-container {
+      background-color: rgba(0, 0, 0, 0.7);
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+
+    h1, h2, h3 {
+      color: #ffffff;
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+      color: #cce7ff;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select {
+      width: 100%;
+      padding: 10px 12px;
+      margin-bottom: 18px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 1rem;
+      transition: border-color 0.3s ease;
+      background-color: #ffffff;
+      color: #333;
+    }
+
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    select:focus {
+      outline: none;
+      border-color: #2563eb;
+      background-color: #e0e7ff;
+    }
+
+    button {
+      background-color: #2563eb;
+      border: none;
+      color: #fff;
+      font-size: 1.1rem;
+      padding: 14px 28px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      box-shadow: 0 4px 8px rgb(37 99 235 / 0.3);
+    }
+
+    button:hover:not(:disabled) {
+      background-color: #1e40af;
+      box-shadow: 0 6px 12px rgb(30 64 175 / 0.5);
+    }
+
+    button:disabled {
+      background-color: #94a3b8;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .section {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 25px 30px;
+      margin-bottom: 30px;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgb(0 0 0 / 0.3);
+    }
+
+    .question-block {
+      margin-bottom: 22px;
+    }
+
+    .summary {
+      font-weight: 700;
+      font-size: 1.15rem;
+      margin-bottom: 12px;
+      color: #dfeaff;
+    }
+
+    #resultSection {
+      display: none;
+    }
+
+    .alert {
+      background-color: #fee2e2;
+      border-left: 5px solid #ef4444;
+      padding: 12px 18px;
+      margin-bottom: 20px;
+      border-radius: 6px;
+      color: #991b1b;
+    }
+
+    .options-container {
+      display: flex;
+      gap: 15px;
+      margin-top: 8px;
+    }
+
+    .option-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .logo-cetpro {
+      max-width: 120px;
+      margin-bottom: 15px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="main-container">
+
+  <h1>Test Vocacional Profesional</h1>
+  <h2>CETPRO Dionisia Herrera Alvarado</h2>
+
+  <!-- Registro -->
+  <section class="section" aria-labelledby="registroTitle">
+    <center><img src="cetpro.png"  alt="Logo CETPRO" class="logo-cetpro" /></center>
+    <h3 id="registroTitle">Registro de Usuario</h3>
+    <form id="registroForm" novalidate>
+      <label for="nombre">Nombres y Apellidos</label>
+      <input type="text" id="nombre" name="nombre" placeholder="Ingrese su nombre completo" autocomplete="name" required minlength="3" />
+      <label for="dni">DNI</label>
+      <input type="number" id="dni" name="dni" placeholder="Ingrese su DNI" required pattern="\d{8}" min="10000000" max="99999999" />
+      <button type="submit" id="startTestBtn">Iniciar Test</button>
+    </form>
+    <div id="registroError" class="alert" style="display:none;"></div>
+  </section>
+
+  <!-- Test vocacional -->
+  <section class="section" aria-labelledby="preguntasTitle" id="testSection" style="display:none;">
+    <h3 id="preguntasTitle">Preguntas Vocacionales</h3>
+    <form id="testForm" novalidate>
+      <div id="questionsContainer" aria-live="polite"></div>
+      <button type="submit" id="submitTestBtn" disabled>Finalizar Test</button>
+    </form>
+  </section>
+
+  <!-- Resultados -->
+  <section class="section" aria-labelledby="resultadosTitle" id="resultSection">
+    <h3 id="resultadosTitle">Resultados</h3>
+    <canvas id="resultChart" width="700" height="350" aria-label="Gráfico de resultados del test vocacional" role="img"></canvas>
+    <p class="summary" id="careerProbabilities"></p>
+  </section>
+
+</div>
+
+<script>
+  (() => {
+    'use strict';
+
+    const careers = {
+      "Ingeniería de Sistemas": [
+        "¿Te gusta programar o resolver problemas con computadoras?",
+        "¿Disfrutas aprender sobre software y hardware?",
+        "¿Tienes interés en redes y sistemas de información?",
+        "¿Te atrae el análisis de datos y la lógica matemática?"
+      ],
+      "Medicina Veterinaria": [
+        "¿Te gustan los animales y cuidar su salud?",
+        "¿Te interesa aprender sobre enfermedades animales?",
+        "¿Disfrutas trabajar en laboratorios o clínicas veterinarias?",
+        "¿Eres paciente y tienes sensibilidad hacia los animales?"
+      ],
+      "Derecho y Ciencias Políticas": [
+        "¿Te interesa la justicia y el derecho?",
+        "¿Disfrutas debatir y argumentar tus ideas?",
+        "¿Quieres comprender leyes y normas sociales?",
+        "¿Te gusta estudiar política y gobierno?"
+      ],
+      "Enfermería": [
+        "¿Te gusta ayudar a cuidar la salud de las personas?",
+        "¿Eres empático y paciente con los demás?",
+        "¿Quieres trabajar en hospitales o clínicas?",
+        "¿Te interesa aprender técnicas médicas y de cuidado?"
+      ],
+      "Contabilidad": [
+        "¿Te gustan los números y las finanzas?",
+        "¿Eres organizado y detallista?",
+        "¿Disfrutas analizar estados financieros?",
+        "¿Prefieres trabajos estructurados y con reglas claras?"
+      ],
+      "Ecoturismo": [
+        "¿Te interesa la conservación del medio ambiente?",
+        "¿Disfrutas las actividades al aire libre y turismo natural?",
+        "¿Quieres promover el turismo sostenible?",
+        "¿Prefieres trabajos en contacto con la naturaleza?"
+      ]
+    };
+
+    let selectedQuestions = [];
+    let userName = '';
+    let userDNI = '';
+
+    const puntajesRespuesta = {
+      'si': 2,
+      'aveces': 1,
+      'no': 0
+    };
+
+    function generarPreguntas() {
+      const allQuestions = [];
+
+      // Seleccionar 2 preguntas aleatorias por carrera
+      for (const [career, questions] of Object.entries(careers)) {
+        const shuffled = [...questions].sort(() => 0.5 - Math.random());
+        const selected = shuffled.slice(0, 2); // 2 preguntas por carrera
+        selected.forEach(q => allQuestions.push({ career, question: q }));
+      }
+
+      // Mezclar todas las preguntas para mostrarlas aleatoriamente
+      for (let i = allQuestions.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [allQuestions[i], allQuestions[j]] = [allQuestions[j], allQuestions[i]];
+      }
+
+      selectedQuestions = allQuestions;
+    }
+
+    function renderizarPreguntas() {
+      const container = document.getElementById('questionsContainer');
+      container.innerHTML = '';
+
+      selectedQuestions.forEach(({career, question}, index) => {
+        const questionId = `q${index}`;
+        const fieldset = document.createElement('fieldset');
+        fieldset.className = 'question-block';
+        fieldset.setAttribute('aria-labelledby', `${questionId}-label`);
+
+        const legend = document.createElement('legend');
+        legend.id = `${questionId}-label`;
+        legend.textContent = `${index + 1}. ${question}`;
+        fieldset.appendChild(legend);
+
+        const optionsDiv = document.createElement('div');
+        optionsDiv.className = 'options-container';
+
+        ['si', 'aveces', 'no'].forEach(resp => {
+          const optionId = `${questionId}-${resp}`;
+          const input = document.createElement('input');
+          input.type = 'radio';
+          input.id = optionId;
+          input.name = questionId;
+          input.value = resp;
+          input.required = true;
+
+          const labelOption = document.createElement('label');
+          labelOption.htmlFor = optionId;
+          labelOption.textContent = resp.charAt(0).toUpperCase() + resp.slice(1);
+
+          const wrapper = document.createElement('div');
+          wrapper.className = 'option-wrapper';
+          wrapper.appendChild(input);
+          wrapper.appendChild(labelOption);
+          optionsDiv.appendChild(wrapper);
+        });
+
+        fieldset.appendChild(optionsDiv);
+        container.appendChild(fieldset);
+      });
+    }
+
+    function validarRegistro(nombre, dni) {
+      const dniRegex = /^\d{8}$/;
+      if (!nombre.trim() || nombre.trim().length < 3) {
+        return "El nombre y apellidos deben tener al menos 3 caracteres.";
+      }
+      if (!dniRegex.test(dni)) {
+        return "El DNI debe contener exactamente 8 dígitos.";
+      }
+      return null;
+    }
+
+    function calcularResultados(respuestas) {
+      const scores = {};
+      for (const career of Object.keys(careers)) {
+        scores[career] = 0;
+      }
+
+      selectedQuestions.forEach(({career}, index) => {
+        const answer = respuestas[index];
+        if (answer) {
+          scores[career] += puntajesRespuesta[answer];
+        }
+      });
+
+      return scores;
+    }
+
+    function mostrarResultados(scores) {
+      const resultSection = document.getElementById('resultSection');
+      resultSection.style.display = 'block';
+      const ctx = document.getElementById('resultChart').getContext('2d');
+
+      const sortedCareers = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+      const topCareers = sortedCareers.slice(0, 5);
+
+      const labels = topCareers.map(c => c[0]);
+      const dataPoints = topCareers.map(c => c[1]);
+
+      if (window.resultChartInstance) {
+        window.resultChartInstance.destroy();
+      }
+
+      window.resultChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Puntaje',
+            data: dataPoints,
+            backgroundColor: 'rgba(37, 99, 235, 0.7)',
+            borderColor: 'rgba(37, 99, 235, 1)',
+            borderWidth: 1,
+            borderRadius: 6,
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              stepSize: 1,
+              title: { display: true, text: 'Puntaje' }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: true }
+          }
+        }
+      });
+
+      const totalPoints = Object.values(scores).reduce((a,b) => a + b, 0) || 1;
+      const [first, second] = topCareers;
+      const porcentaje1 = ((first[1] / totalPoints) * 100).toFixed(1);
+      const porcentaje2 = second ? ((second[1] / totalPoints) * 100).toFixed(1) : 0;
+      const careerProbEl = document.getElementById('careerProbabilities');
+      careerProbEl.textContent = `Primera opción: ${first[0]} (${porcentaje1}%) | Segunda opción: ${second ? second[0] + ' (' + porcentaje2 + '%)' : 'N/A'}`;
+    }
+
+    // Eventos
+    document.getElementById('registroForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const nombreInput = e.target.nombre.value.trim();
+      const dniInput = e.target.dni.value.trim();
+      const errorDiv = document.getElementById('registroError');
+      const errorMsg = validarRegistro(nombreInput, dniInput);
+      if (errorMsg) {
+        errorDiv.textContent = errorMsg;
+        errorDiv.style.display = 'block';
+        return;
+      } else {
+        errorDiv.style.display = 'none';
+      }
+      userName = nombreInput;
+      userDNI = dniInput;
+      document.getElementById('registroForm').parentElement.style.display = 'none';
+      document.getElementById('testSection').style.display = 'block';
+      generarPreguntas();
+      renderizarPreguntas();
+
+      const testForm = document.getElementById('testForm');
+      testForm.addEventListener('change', () => {
+        const allAnswered = selectedQuestions.every((_, index) => {
+          return [...testForm.elements].some(el => el.name === `q${index}` && el.checked);
+        });
+        document.getElementById('submitTestBtn').disabled = !allAnswered;
+      });
+    });
+
+    document.getElementById('testForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const respuestas = selectedQuestions.map((_, index) => formData.get(`q${index}`));
+      const resultados = calcularResultados(respuestas);
+      mostrarResultados(resultados);
+      document.getElementById('testSection').style.display = 'none';
+    });
+
+  })();
+</script>
+</body>
+</html>
